@@ -1,0 +1,88 @@
+/*
+ * Detect objects in an image specified by users
+ * 
+ * Author: Ruimin Zhang
+ * Date: July 15, 2015
+ * 
+ */
+
+import org.opencv.core.Core;
+import org.opencv.core.Mat;
+import org.opencv.core.MatOfRect;
+import org.opencv.core.Point;
+import org.opencv.core.Rect;
+import org.opencv.core.Scalar;
+import org.opencv.highgui.Highgui;
+import org.opencv.objdetect.CascadeClassifier;
+
+// This class detects faces included in a picture
+public class Detector {
+	
+	private String objName; // what object to be detected in target images?
+	private String xmlPath; // where is the .xml used for detection?
+	private CascadeClassifier classifier; // a cascade classifier used to detect objects
+	private Mat inputTarget,  // original image stored in Mat format
+	            outputTarget; // detected objects marked in the output target image 
+	
+	public Detector(String obj, String knowledge_xml){
+		objName = obj;
+		//inputTarget = image;
+		//outputTarget = null;
+		xmlPath = knowledge_xml;
+		classifier = new CascadeClassifier(xmlPath);
+	}
+	
+	public String toString(){
+		return "Running "+objName+" detector";
+	}
+	
+	/*
+	 * Detect the object in the input image
+	 * @return - the number of objects detected in the input image 
+	 */
+	public int detect(Mat image){
+		int size; // how many objects have been detected in the target
+		inputTarget = image;
+		outputTarget = inputTarget;
+		MatOfRect detections = new MatOfRect();
+        classifier.detectMultiScale(outputTarget, detections);
+        size = detections.toArray().length;
+
+        for(Rect rect : detections.toArray()){
+        	 Core.rectangle(outputTarget, new Point(rect.x, rect.y), new Point(rect.x + rect.width, rect.y + rect.height),
+                     new Scalar(0, 255, 0));
+        }
+		return size;
+	}
+
+	/*
+	 * Store the image marked with detected objects at the path specified by parameter filename
+	 * @param:filename - where to store and what is the filename 
+	 * @return - -1 if error
+	 *            1 if success
+	 */ 
+	public int store(String filename){
+		if (outputTarget == null){
+			return -1;
+		}
+		Highgui.imwrite(filename, outputTarget);
+		return 1;
+	}  
+	public static void main(String[] args) {
+        
+        System.loadLibrary(Core.NATIVE_LIBRARY_NAME); // should be loaded only once
+        //Mat image = Highgui
+        //        .imread(Detector.class.getResource("images/face").getPath());
+        Mat image = Highgui
+                .imread("/home/judy/Documents/soniclab/darwin-robot/musicServer/HelloCV/bin/images/image_Thu%20Aug%20%206%2011:51:00%202015");
+        Detector d = new Detector("face", Detector.class.getResource("data/haarcascade_frontalface_alt.xml").getPath());
+        
+        if (d.detect(image) > 0)
+          d.store("output1.png");
+        else{
+        	System.out.format("no faces is detected");
+        	
+        }
+    }
+
+}

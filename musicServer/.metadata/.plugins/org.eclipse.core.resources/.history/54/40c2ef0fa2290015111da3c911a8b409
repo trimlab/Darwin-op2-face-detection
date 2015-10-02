@@ -1,0 +1,15 @@
+import org.opencv.core.CvType;
+import org.opencv.core.Mat;
+
+public class Main {
+	static{ System.loadLibrary("opencv_java2411"); }
+    public static void main(String[] args) {
+        //System.loadLibrary("opencv_java2411");
+        //Mat m  = Mat.eye(3, 3, CvType.CV_8UC1);
+        //System.out.println("m = " + m.dump());
+        
+        System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
+        System.out.println("\nRunning FaceDetector");
+        System.out.println(Detector.class.getResource("haarcascade_frontalface_alt.xml").getPath());
+    }
+}

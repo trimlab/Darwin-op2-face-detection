@@ -1,0 +1,152 @@
+
+
+import java.net.*; // for socket
+import java.io.*;  // for handling io exception
+import org.opencv.core.Mat;
+import org.opencv.highgui.Highgui;
+
+import org.jfugue.*;  // import jfugue library
+
+public class ClientInputProcessor implements Runnable {
+    private Socket clientSocket;
+    private Player player;
+    Detector detector;
+
+    // Pattern pattern = new Pattern("C D E F G A B");
+    private Pattern pattern1 = new Pattern("Ch C#q C##i C5maj");
+    private Pattern pattern2 = new Pattern("Cq Eq Gqw");
+    private Pattern pattern3 = new Pattern("Ci*5:4 Ei*5:4 Gi*5:4 Ei*5:4 Gi*5:4");
+    private Pattern pattern4 = new Pattern("Eq*3:2 Fq*3:2 Gq*3:2");
+    private Pattern pattern5 = new Pattern("G5q B5q C6q- | C6-w- | C6-q B5q A5q G5q");
+    private Pattern pattern6 = new Pattern("E3wwd0");
+    private Pattern pattern7 = new Pattern("C7maja30");
+
+   // constructor
+    public ClientInputProcessor(Socket aClientSocket){
+       clientSocket = aClientSocket;
+       player = new Player();
+       detector = new Detector("face", Detector.class.getResource("data/haarcascade_frontalface_alt.xml").getPath());
+    }
+
+    public void play(int num){
+         switch(num){
+             case 0:
+                 player.play(pattern1);
+                 break;
+             case 1:
+                 player.play(pattern2);
+                 break;
+             case 2:
+                 player.play(pattern3);
+                 break;
+             case 3:
+                 player.play(pattern4);
+                 break;
+             case 4:
+                 player.play(pattern5);
+                 break;
+             case 5:
+                 player.play(pattern6);
+                 break;
+             case 6:
+                 player.play(pattern7);
+                 break;
+ 
+         }
+    }
+
+    public void run(){
+       DataInputStream in;
+       DataOutputStream out;
+       //String e1 = "exit";
+       
+       try{
+          in = new DataInputStream(clientSocket.getInputStream());
+          out = new DataOutputStream(clientSocket.getOutputStream());
+          while(true){
+        	 int filesize;
+             char filename[] = new char[31];
+             char filesize_2[] = new char[6];
+        	 byte[] filename_buf = new byte[31];
+             byte[] filesize_buf = new byte[6];           
+             
+             //out.writeBytes("go!");
+             in.read(filename_buf, 0, 31); // read image filename
+             in.read(filesize_buf, 0, 6);  // read image size
+             
+             // convert filename from bytes to a string
+             String temp_filename = "";
+             for(int i=0;i<30;i++){
+            	 filename[i] = (char)(filename_buf[i] & 0xFF); //convert a c byte from remote client to a java char
+            	 System.out.format("filename[%d]: %c\n", i, filename[i]);
+            	 temp_filename += filename[i];
+             }
+             System.out.println("filename:"+temp_filename);
+             
+             
+             // convert filesize from bytes to a string
+             String temp_filesize = "";
+             for(int i=0;i<5;i++){
+            	 filesize_2[i] = (char)(filesize_buf[i] & 0xFF); //convert a c byte from remote client to a java char
+            	 System.out.format("filesize_2[%d]: %c\n", i, filesize_2[i]);
+            	 if (filesize_2[i] >= 48 && filesize_2[i] <= 57){
+            		 temp_filesize += filesize_2[i];	 
+            	 }else{
+            		 System.out.format("invisible code:%d\n", (int)filesize_2[i]);
+            		 break;
+            	 }
+            	 
+             }
+             System.out.format("filesize_2: +%s+\n",temp_filesize);
+     
+             
+             try{
+            	 // read image from socket
+            	 filesize = Integer.parseInt(temp_filesize);  
+            	 temp_filename = temp_filename.replace(' ', '_');
+            	 String filePath = "bin/images/" + temp_filename;
+                 //System.out.println("file size = "+ filesize);
+                 
+            	 // store image to local drive
+                 byte[] image_buf = new byte[filesize];
+                 in.read(image_buf, 0, filesize); // read image
+                 FileOutputStream output = new FileOutputStream(new File(filePath));
+                 output.write(image_buf);
+                 output.close();
+                 
+                 // detect a face
+                 //temp_filename = "face";
+                 Mat image = Highgui
+                         .imread(Detector.class.getResource("images/"+temp_filename).getPath());
+                 System.out.format("Scanning image at %s\n", Detector.class.getResource("images/"+temp_filename).getPath());
+             
+                 if (detector.detect(image) > 0){
+                	 detector.store(temp_filename+".png");
+                	 String x = Integer.toString((int)(detector.targetCenter.x));
+                	 String y = Integer.toString((int)(detector.targetCenter.y));
+                	 // send face center to darwin
+                	 String message = String.format("%3s", x) + ","  + String.format("%3s", y) ;
+                	 out.writeBytes(message);
+                     System.out.format("detect a face in %s.\n", temp_filename);
+                 }  
+                 else{
+                	 // send new point(-1,-1) to darwin
+                	 System.out.format("no faces are detected in %s.\n", temp_filename);
+                 }
+            	 
+             }catch(NumberFormatException ex){
+            	 System.out.println("Number Format Exception");
+            	 break; 
+             }
+          }
+          in.close();
+     	  out.close();
+     	  clientSocket.close();
+     	  System.out.println("socket is closed.");
+       }catch(IOException e){
+           e.printStackTrace();
+           return;
+       }
+  	   
+    }
+}
