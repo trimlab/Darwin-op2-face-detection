@@ -10,7 +10,7 @@ The project includes two parts of code: 1) demo, which modifies the original bui
 
 # How to use this code?
 
-1. Connect your computer with Darwin-op2 
+1. Connect your computer with Darwin-op2 by ethernet
 
 
 2. Use "scp -r demo robotis@192.168.123.1:~/../../robotis/Linux/project/" to replace the original built-in demo program with our demo program
